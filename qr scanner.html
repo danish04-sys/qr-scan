@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>QR Code Scanner</title>
+    <style>
+        body {
+            font-family: sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 20px;
+            padding: 20px;
+        }
+        #upload-container {
+            border: 2px dashed #ccc;
+            padding: 20px;
+            text-align: center;
+            cursor: pointer;
+        }
+        #upload-container input[type="file"] {
+            display: none;
+        }
+        #preview-container {
+            max-width: 300px;
+            border: 1px solid #ddd;
+            padding: 10px;
+            text-align: center;
+        }
+        #preview-image {
+            max-width: 100%;
+            height: auto;
+        }
+        #result-container {
+            margin-top: 20px;
+            font-weight: bold;
+        }
+        .scan-link {
+            color: blue;
+            text-decoration: underline;
+            cursor: pointer;
+        }
+        .error-message {
+            color: red;
+        }
+    </style>
+</head>
+<body>
+    <h1>QR Code Scanner</h1>
+
+    <div id="upload-container">
+        Click here to upload an image
+        <input type="file" id="image-upload" accept="image/*">
+    </div>
+
+    <div id="preview-container" style="display: none;">
+        <h2>Preview</h2>
+        <img id="preview-image" src="#" alt="Uploaded Image">
+    </div>
+
+    <div id="result-container">
+        <p>Scan Result: <span id="scan-result">No QR code found</span></p>
+        <p id="error-display" class="error-message"></p>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
+    <script>
+        const imageUpload = document.getElementById('image-upload');
+        const previewContainer = document.getElementById('preview-container');
+        const previewImage = document.getElementById('preview-image');
+        const scanResultElement = document.getElementById('scan-result');
+        const errorDisplay = document.getElementById('error-display');
+
+        imageUpload.addEventListener('change', handleImageUpload);
+        document.getElementById('upload-container').addEventListener('click', () => imageUpload.click());
+
+        function handleImageUpload(event) {
+            const file = event.target.files[0];
+            errorDisplay.textContent = '';
+            scanResultElement.innerHTML = 'Scanning...'; // Use innerHTML for potential link
+            previewContainer.style.display = 'none';
+
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    previewImage.onload = function() {
+                        previewContainer.style.display = 'block';
+                        scanQRCode(previewImage);
+                    };
+                    previewImage.onerror = function() {
+                        errorDisplay.textContent = 'Error loading image.';
+                        scanResultElement.textContent = 'Upload failed';
+                        previewContainer.style.display = 'none';
+                    };
+                    previewImage.src = e.target.result;
+                }
+                reader.onerror = function() {
+                    errorDisplay.textContent = 'Error reading the file.';
+                    scanResultElement.textContent = 'Upload failed';
+                    previewContainer.style.display = 'none';
+                };
+                reader.readAsDataURL(file);
+            } else {
+                scanResultElement.textContent = 'No file selected.';
+            }
+        }
+
+        function scanQRCode(imageElement) {
+            const canvas = document.createElement('canvas');
+            const context = canvas.getContext('2d');
+            canvas.width = imageElement.naturalWidth || imageElement.width;
+            canvas.height = imageElement.naturalHeight || imageElement.height;
+            context.drawImage(imageElement, 0, 0, canvas.width, canvas.height);
+            const imageData = context.getImageData(0, 0, canvas.width, canvas.height);
+            const code = jsQR(imageData.data, imageData.width, imageData.height);
+
+            if (code) {
+                const scannedText = code.data;
+                // Basic check if the scanned text looks like a URL
+                if (scannedText.startsWith('http://') || scannedText.startsWith('https://')) {
+                    scanResultElement.innerHTML = `<a href="${scannedText}" target="_blank" class="scan-link">${scannedText}</a>`;
+                } else {
+                    scanResultElement.textContent = scannedText;
+                }
+                errorDisplay.textContent = '';
+            } else {
+                scanResultElement.textContent = 'No QR code found';
+            }
+        }
+    </script>
+</body>
+</html>
